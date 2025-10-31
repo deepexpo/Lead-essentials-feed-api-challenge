@@ -38,8 +38,10 @@ final class FeedAPICacheIntegrationTests: XCTestCase {
 		let feed = uniqueItems().models
 
 		let saveExp = expectation(description: "Wait for save completion")
-		sutToPerformSave.save(feed) { saveError in
-			XCTAssertNil(saveError, "Expected to save feed successfully")
+		sutToPerformSave.save(feed) { saveResult in
+			if case let Result.failure(saveError) = saveResult {
+				XCTAssertNil(saveError, "Expected to save feed successfully")
+			}
 			saveExp.fulfill()
 		}
 		wait(for: [saveExp], timeout: 1.0)

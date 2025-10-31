@@ -8,7 +8,7 @@ class LocalFeedLoader: FeedLoader {
 	let store: FeedStore
 	let currentDate: () -> Date
 
-	public typealias SaveResult = Error?
+	public typealias SaveResult = Result<Void, Error>
 	public typealias LoadResult = FeedLoader.Result
 
 	init(_ store: FeedStore, currentDate: @escaping () -> Date) {
@@ -17,12 +17,14 @@ class LocalFeedLoader: FeedLoader {
 	}
 
 	func save(_ items: [FeedImage], completion: @escaping (SaveResult) -> Void) {
-		store.deleteCacheFeed { [weak self] error in
+		store.deleteCacheFeed { [weak self] deletionResult in
 			guard let self = self else { return }
-			if let deletedCacheError = error {
-				completion(deletedCacheError)
-			} else {
+
+			switch (deletionResult) {
+			case .success:
 				cache(items, with: completion)
+			case let .failure(error):
+				completion(.failure(error))
 			}
 		}
 	}
@@ -56,9 +58,9 @@ class LocalFeedLoader: FeedLoader {
 	}
 
 	private func cache(_ items: [FeedImage], with completion: @escaping (SaveResult) -> Void) {
-		store.insert(items.toLocal(), timeStamp: self.currentDate()) { [weak self] error in
+		store.insert(items.toLocal(), timeStamp: self.currentDate()) { [weak self] insertResult in
 			guard self != nil else { return }
-			completion(error)
+			completion(insertResult)
 		}
 	}
 }
