@@ -33,11 +33,9 @@ class LocalFeedLoader: FeedLoader {
 			switch (result) {
 			case let .failure(error):
 				completion(.failure(error))
-			case let .found(feed: localFeedImages, timeStamp: date) where FeedCachePolicy.validate(date, against: self.currentDate()):
+			case let .success(.found(feed: localFeedImages, timeStamp: date)) where FeedCachePolicy.validate(date, against: self.currentDate()):
 				completion(.success(localFeedImages.toModel()))
-			case .found:
-				completion(.success([]))
-			case .empty:
+			case .success:
 				completion(.success([]))
 			}
 		}
@@ -49,9 +47,9 @@ class LocalFeedLoader: FeedLoader {
 			switch (result) {
 			case .failure(_):
 				self.store.deleteCacheFeed { _ in }
-			case let .found(feed: _, timeStamp: date) where !FeedCachePolicy.validate(date, against: self.currentDate()):
+			case let .success(.found(feed: _, timeStamp: date)) where !FeedCachePolicy.validate(date, against: self.currentDate()):
 				self.store.deleteCacheFeed { _ in }
-			case .found, .empty:
+			case .success:
 				break
 			}
 		}

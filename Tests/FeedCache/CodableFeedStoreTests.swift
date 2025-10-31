@@ -25,7 +25,7 @@ final class CodableFeedStoreTests: XCTestCase, FailableFeedStore {
 
 	func test_retrieve_hasNoSideEffectsOnEmptyCache() {
 		let sut = makeSUT()
-		expect(sut, toRetrieveTwice: .empty)
+		expect(sut, toRetrieveTwice: .success(.empty))
 	}
 
 	func test_retriveAfterInsertingToEmptyCache() {
@@ -33,7 +33,7 @@ final class CodableFeedStoreTests: XCTestCase, FailableFeedStore {
 		let sut = makeSUT()
 		let timeStamp = Date()
 		insert((feed, timeStamp), to: sut)
-		expect(sut, toRetrieve: .found(feed: feed, timeStamp: timeStamp))
+		expect(sut, toRetrieve: .suceess(.found(feed: feed, timeStamp: timeStamp)))
 	}
 
 	func test_retrieveAfterInsertingToEmptyCache_deliversInsertedValues() {
