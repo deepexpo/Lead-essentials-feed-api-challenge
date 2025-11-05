@@ -114,8 +114,14 @@ extension FeedStoreSpecs where Self: XCTestCase {
 	func deleteCache(from sut: FeedStore) -> Error? {
 		let exp = expectation(description: "wait to complete")
 		var deletedError: Error?
-		sut.deleteCacheFeed { deletionError in
-			deletedError = deletionError
+		sut.deleteCacheFeed { result in
+			switch (result) {
+			case let .failure(error):
+				deletedError = error
+			default:
+				break
+			}
+
 			exp.fulfill()
 		}
 		wait(for: [exp], timeout: 1.0)
