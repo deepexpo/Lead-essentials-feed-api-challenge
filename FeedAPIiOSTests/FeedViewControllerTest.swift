@@ -31,6 +31,7 @@ class FeedViewController: UITableViewController {
 }
 
 final class FeedViewControllerTest: XCTestCase {
+	
 	func test_init_doesNotLoadFeed() {
 		let (loader, _) = makeSUT()
 
@@ -45,10 +46,10 @@ final class FeedViewControllerTest: XCTestCase {
 		XCTAssertEqual(loader.loadCallCount, 1)
 	}
 
-	func test_pullToRefresh_loadsFeed() {
+	func test_userInitiatedFeedReload_reloadsFeed() {
 		let (loader, sut) = makeSUT()
 		sut.loadViewIfNeeded()
-		sut.refreshControl?.simulatePullToRefresh()
+		sut.simulateUserInitiatedReload()
 		XCTAssertEqual(loader.loadCallCount, 2)
 
 		sut.refreshControl?.simulatePullToRefresh()
@@ -58,29 +59,29 @@ final class FeedViewControllerTest: XCTestCase {
 	func test_viewDidLoad_showLoadingIndicator() {
 		let (_, sut) = makeSUT()
 		sut.simulateAppearance()
-		sut.refreshControl?.beginRefreshing()
+		sut.beginRefreshing()
 		XCTAssertEqual(sut.isShowingLoadingIndicator, true)
 	}
 
 	func test_viewDidLoad_hidesLoadingIndicatorOnLoaderCompletion() {
 		let (loader, sut) = makeSUT()
 		sut.simulateAppearance()
-		sut.refreshControl?.beginRefreshing()
+		sut.beginRefreshing()
 		loader.completeFeedLoading()
 		XCTAssertEqual(sut.isShowingLoadingIndicator, false)
 	}
 
-	func test_pullToRefresh_showloadingIndicator() {
+	func test_userInitiatedFeedReload_showsLoadingIndicator() {
 		let (_, sut) = makeSUT()
 		sut.simulateAppearance()
-		sut.refreshControl?.simulatePullToRefresh()
+		sut.simulateUserInitiatedReload()
 		XCTAssertEqual(sut.isShowingLoadingIndicator, true)
 	}
 
-	func test_pullToRefresh_hideoadingIndicatorAfterCompletion() {
+	func test_userInitiatedFeedReload_hidesLoadingIndicatorOnLoaderCompletion() {
 		let (loader, sut) = makeSUT()
 		sut.simulateAppearance()
-		sut.refreshControl?.simulatePullToRefresh()
+		sut.simulateUserInitiatedReload()
 		loader.completeFeedLoading()
 		XCTAssertEqual(sut.isShowingLoadingIndicator, false)
 	}
@@ -174,6 +175,14 @@ private extension FeedViewController {
 
 	var isShowingLoadingIndicator: Bool {
 		return refreshControl?.isRefreshing == true
+	}
+
+	func beginRefreshing() {
+		refreshControl?.beginRefreshing()
+	}
+
+	func endRefreshing() {
+		refreshControl?.endRefreshing()
 	}
 
 	func numberOfRows(in section: Int) -> Int {
