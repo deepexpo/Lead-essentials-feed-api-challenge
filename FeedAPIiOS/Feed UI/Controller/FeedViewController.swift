@@ -5,46 +5,67 @@
 import UIKit
 internal import FeedAPIChallenge
 
-public protocol FeedImageDataLoaderTask {
-	func cancel()
-}
+public final class FeedRefreshViewController: NSObject {
+	var feedLoader: FeedLoader?
+	init(feedLoader: FeedLoader? = nil) {
+		self.feedLoader = feedLoader
+	}
 
-protocol FeedImageDataLoader {
-	typealias Result = Swift.Result<Data, Error>
-	func loadImageData(from url: URL, completion: @escaping (Result) -> Void) -> FeedImageDataLoaderTask
+	public lazy var view: UIRefreshControl = {
+		let view = UIRefreshControl()
+		view.addTarget(self, action: #selector(refresh), for: .valueChanged)
+		return view
+	}()
+
+	var onRefresh: (([FeedImage]) -> Void)?
+	@objc func refresh() {
+		self.view.beginRefreshing()
+		feedLoader?.load { [weak self] result in
+			if let feed = (try? result.get()) {
+				self?.onRefresh?(feed)
+			}
+			self?.view.endRefreshing()
+		}
+	}
 }
 
 final class FeedViewController: UITableViewController, UITableViewDataSourcePrefetching {
-	var loader: FeedLoader?
+	public var refreshController: FeedRefreshViewController?
 	var imageLoader: FeedImageDataLoader?
 
-	var tableViewModel: [FeedImage] = .init()
+	var tableViewModel = [FeedImage]() {
+		didSet {
+			tableView.reloadData()
+		}
+	}
 
 	var tasks: [IndexPath: FeedImageDataLoaderTask] = .init()
 
 	public convenience init(loader: FeedLoader, imageDataLoader: FeedImageDataLoader) {
 		self.init()
-		self.loader = loader
+		self.refreshController = FeedRefreshViewController(feedLoader: loader)
 		self.imageLoader = imageDataLoader
 		self.tableView.prefetchDataSource = self
 	}
 
+	private var onViewDidAppear: ((FeedViewController) -> Void)?
+
 	public override func viewDidLoad() {
 		super.viewDidLoad()
-		self.refreshControl = UIRefreshControl()
-		self.refreshControl?.addTarget(self, action: #selector(load), for: .valueChanged)
-		self.load()
+		self.refreshControl = refreshController?.view
+
+		refreshController?.onRefresh = { [weak self] feed in
+			self?.tableViewModel = feed
+		}
+		onViewDidAppear = { vc in
+			vc.onViewDidAppear = nil
+			vc.refreshController?.refresh()
+		}
 	}
 
-	@objc private func load() {
-		self.refreshControl?.beginRefreshing()
-		loader?.load { [weak self] result in
-			if let feed = (try? result.get()) {
-				self?.tableViewModel = feed
-				self?.tableView.reloadData()
-			}
-			self?.refreshControl?.endRefreshing()
-		}
+	public override func viewDidAppear(_ animated: Bool) {
+		super.viewDidAppear(animated)
+		onViewDidAppear?(self)
 	}
 
 	override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -76,7 +97,7 @@ final class FeedViewController: UITableViewController, UITableViewDataSourcePref
 	}
 
 	override func tableView(_ tableView: UITableView, didEndDisplaying cell: UITableViewCell, forRowAt indexPath: IndexPath) {
-		cancelTasl(at: indexPath)
+		cancelTask(at: indexPath)
 	}
 
 	override func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
@@ -87,7 +108,11 @@ final class FeedViewController: UITableViewController, UITableViewDataSourcePref
 		indexPaths.forEach(startTask)
 	}
 
-	private func cancelTasl(at indexPath: IndexPath) {
+	public func tableView(_ tableView: UITableView, cancelPrefetchingForRowsAt indexPaths: [IndexPath]) {
+		indexPaths.forEach(cancelTask)
+	}
+
+	private func cancelTask(at indexPath: IndexPath) {
 		tasks[indexPath]?.cancel()
 		tasks[indexPath] = nil
 	}
